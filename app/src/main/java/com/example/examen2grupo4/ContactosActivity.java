@@ -154,7 +154,7 @@ public class ContactosActivity extends AppCompatActivity {
                             }
 
                             JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
-                                    Request.Method.DELETE,
+                                    Request.Method.POST,
                                     url,
                                     postData,
                                     new Response.Listener<JSONObject>() {
