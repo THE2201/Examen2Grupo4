@@ -2,7 +2,7 @@
 
 INTEGRANTES:
 
-Abel Solórzano    
+Abel Solórzano          202110080028
 Diego Colman            202110060198
 Ligia Rivera            231051109
 Luis Zepeda             202120060261
