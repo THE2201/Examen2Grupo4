@@ -22,6 +22,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="20dp"
+        android:fontFamily="sans-serif-black"
         android:text="Capturar Audio" />
 
     <Button
@@ -30,6 +31,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="20dp"
+        android:fontFamily="sans-serif-black"
         android:text="Reproducir Audio" />
 
     <TextView
@@ -110,6 +112,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="20dp"
+        android:fontFamily="sans-serif-black"
         android:text="Salvar Contacto" />
 
     <Button
@@ -118,6 +121,7 @@
         android:layout_height="wrap_content"
         android:layout_gravity="center"
         android:layout_marginTop="20dp"
+        android:fontFamily="sans-serif-black"
         android:text="Contactos Salvados" />
 
     <Button
