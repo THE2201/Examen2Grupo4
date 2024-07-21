@@ -2,6 +2,7 @@ package com.example.examen2grupo4;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.Manifest;
 import androidx.activity.EdgeToEdge;
@@ -9,14 +10,33 @@ import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import android.media.MediaRecorder;
 import android.os.Environment;
+import android.util.Base64;
 import android.util.Log;
 import android.view.View;
 import android.widget.Button;
 import android.widget.EditText;
+import android.widget.Toast;
 
+import com.android.volley.Request;
+import com.android.volley.RequestQueue;
+import com.android.volley.Response;
+import com.android.volley.VolleyError;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
+import com.android.volley.toolbox.Volley;
 import com.example.examen2grupo4.Models.Contacto;
 
+import org.json.JSONException;
+import org.json.JSONObject;
+
+import java.io.File;
+import java.io.FileInputStream;
 import java.io.IOException;
+import java.io.InputStream;
+import java.nio.file.Files;
+import java.nio.file.Paths;
+import java.util.HashMap;
+import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
@@ -25,12 +45,12 @@ public class MainActivity extends AppCompatActivity {
     private boolean permissionToRecordAccepted = false;
     private String [] permissions = {Manifest.permission.RECORD_AUDIO};
 
-
     //Impresion en consola al fallar
     private final String TAG = "Error";
 
     //Archivo e instancia para grabar
     private MediaRecorder recorder = null;
+    private MediaPlayer player = null;
     private String fileName = null;
 
     //booleano para definir y cambiar texto de: Capturar audio. -> Detener grabacion
@@ -38,6 +58,7 @@ public class MainActivity extends AppCompatActivity {
 
     Button detenerAudio;
     Button capturarAudio;
+    Button reproducirAudio;
     Button salvar;
     Button contactos;
     EditText nombre;
@@ -59,6 +80,7 @@ public class MainActivity extends AppCompatActivity {
         longitud = (EditText) findViewById(R.id.longitud);
 
         capturarAudio = (Button) findViewById(R.id.bt_capturar_audio);
+        reproducirAudio = findViewById(R.id.bt_reproducir_audio);
         salvar = (Button) findViewById(R.id.bt_salvar);
         contactos = (Button) findViewById(R.id.bt_contactos);
         detenerAudio = (Button) findViewById(R.id.bt_detener_audio);
@@ -69,23 +91,79 @@ public class MainActivity extends AppCompatActivity {
 
         capturarAudio.setOnClickListener(v -> startRecording());
         detenerAudio.setOnClickListener(v -> stopRecording());
+        reproducirAudio.setOnClickListener(v -> startPlaying());
         contactos.setOnClickListener(new View.OnClickListener() {
             @Override
             public void onClick(View v) {
                 startActivity(new Intent(MainActivity.this, ContactosActivity.class));
             }
         });
-
         salvar.setOnClickListener(v -> guardarContacto());
-
-
     }
 
     private void guardarContacto() {
-        Contacto contact;
-        //Insertar codigo para enviar
+        String url = "http://34.125.8.146/postContactos.php";
+
+        JSONObject jsonBody = new JSONObject();
+        try {
+            jsonBody.put("nombre", nombre.getText().toString());
+            jsonBody.put("telefono", telefono.getText().toString());
+            jsonBody.put("latitud", latitud.getText().toString());
+            jsonBody.put("longitud", longitud.getText().toString());
+            jsonBody.put("audio", encodeAudioFileToBase64());
+        } catch (JSONException e) {
+            e.printStackTrace();
+        }
+
+        JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
+                response -> {
+                    // Manejar la respuesta del servidor
+                    Log.d("Response", response.toString());
+
+                    // Limpiar campos después de guardar
+                    limpiarCampos();
+                },
+                error -> {
+                    // Manejar el error
+                    Log.e("Error", error.toString());
+                }) {
+            @Override
+            public Map<String, String> getHeaders() {
+                Map<String, String> headers = new HashMap<>();
+                headers.put("Content-Type", "application/json");
+                return headers;
+            }
+        };
+
+        // Añadir la solicitud a la cola
+        RequestQueue requestQueue = Volley.newRequestQueue(this);
+        requestQueue.add(jsonObjectRequest);
     }
 
+    private String encodeAudioFileToBase64() {
+        File audioFile = new File(fileName);
+        byte[] audioBytes = new byte[(int) audioFile.length()];
+        try (InputStream is = new FileInputStream(audioFile)) {
+            int bytesRead = is.read(audioBytes);
+            if (bytesRead != audioFile.length()) {
+                throw new IOException("Error al leer el archivo.");
+            }
+        } catch (IOException e) {
+            e.printStackTrace();
+            return null;
+        }
+        String encodedString = Base64.encodeToString(audioBytes, Base64.DEFAULT);
+        Log.d("Base64Audio", encodedString); // Imprimir en Logcat
+        return encodedString;
+    }
+
+
+    private void limpiarCampos() {
+        nombre.setText("");
+        telefono.setText("");
+        latitud.setText("");
+        longitud.setText("");
+    }
 
     //funcion para comenzar grabacion
     private void startRecording() {
@@ -100,7 +178,7 @@ public class MainActivity extends AppCompatActivity {
         try {
             recorder.prepare();
         } catch (IOException e) {
-            Log.i(TAG, "startRecording: "+e.toString());
+            Log.i(TAG, "startRecording: " + e.toString());
         }
 
         recorder.start();
@@ -123,8 +201,22 @@ public class MainActivity extends AppCompatActivity {
             recorder.release();
             recorder = null;
         }
+        if (player != null) {
+            player.release();
+            player = null;
+        }
     }
 
+    private void startPlaying() {
+        player = new MediaPlayer();
+        try {
+            player.setDataSource(fileName);
+            player.prepare();
+            player.start();
+        } catch (IOException e) {
+            Log.i(TAG, "startPlaying: " + e.toString());
+        }
+    }
 
     @Override
     public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
