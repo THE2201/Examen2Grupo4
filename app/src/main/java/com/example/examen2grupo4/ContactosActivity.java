@@ -23,6 +23,8 @@ import com.android.volley.RequestQueue;
 import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
+import com.android.volley.toolbox.JsonObjectRequest;
+import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
@@ -30,7 +32,9 @@ import org.json.JSONException;
 import org.json.JSONObject;
 
 import java.util.ArrayList;
+import java.util.HashMap;
 import java.util.List;
+import java.util.Map;
 import java.util.stream.Collectors;
 
 public class ContactosActivity extends AppCompatActivity {
@@ -41,7 +45,9 @@ public class ContactosActivity extends AppCompatActivity {
     private ArrayAdapter<String> adapter;
     private ArrayList<String> contactos;
     private ArrayList<String> contactosOriginales;
+    private ArrayList<Integer> idsContactos;
     private String contactoSeleccionado;
+    private int idSeleccionado;
     private RequestQueue requestQueue;
 
     @Override
@@ -58,8 +64,12 @@ public class ContactosActivity extends AppCompatActivity {
 
         contactos = new ArrayList<>();
         contactosOriginales = new ArrayList<>();
+        idsContactos = new ArrayList<>();
         adapter = new ArrayAdapter<>(this, android.R.layout.simple_list_item_single_choice, contactos);
         listViewContactos.setAdapter(adapter);
+
+        eliminarButton.setEnabled(false);
+        actualizarButton.setEnabled(false);
 
         requestQueue = Volley.newRequestQueue(this);
 
@@ -69,6 +79,9 @@ public class ContactosActivity extends AppCompatActivity {
             @Override
             public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
                 contactoSeleccionado = (String) parent.getItemAtPosition(position);
+                idSeleccionado = idsContactos.get(position);
+                eliminarButton.setEnabled(true);
+                actualizarButton.setEnabled(true);
                 showActionDialog();
             }
         });
@@ -123,17 +136,51 @@ public class ContactosActivity extends AppCompatActivity {
     }
 
     private void eliminarContacto() {
-        if (contactoSeleccionado != null) {
+        if (idSeleccionado != -1) {
             new AlertDialog.Builder(this)
                     .setTitle("Confirmar eliminación")
                     .setMessage("¿Está seguro de que desea eliminar este contacto?")
                     .setPositiveButton("Sí", new DialogInterface.OnClickListener() {
                         @Override
                         public void onClick(DialogInterface dialog, int which) {
-                            contactos.remove(contactoSeleccionado);
-                            adapter.notifyDataSetChanged();
-                            contactoSeleccionado = null;
-                            Toast.makeText(ContactosActivity.this, "Contacto eliminado", Toast.LENGTH_SHORT).show();
+                            String url = "http://34.125.8.146/deleteContactos.php";
+
+                            JSONObject postData = new JSONObject();
+                            try {
+                                postData.put("id", idSeleccionado);
+                            } catch (JSONException e) {
+                                e.printStackTrace();
+                            }
+
+                            JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
+                                    Request.Method.POST,
+                                    url,
+                                    postData,
+                                    new Response.Listener<JSONObject>() {
+                                        @Override
+                                        public void onResponse(JSONObject response) {
+                                            contactos.remove(contactoSeleccionado);
+                                            contactosOriginales.remove(contactoSeleccionado);
+                                            idsContactos.remove((Integer) idSeleccionado);
+                                            adapter.notifyDataSetChanged();
+                                            listViewContactos.clearChoices();
+                                            listViewContactos.requestLayout();
+                                            contactoSeleccionado = null;
+                                            idSeleccionado = -1;
+                                            eliminarButton.setEnabled(false);
+                                            actualizarButton.setEnabled(false);
+                                            Toast.makeText(ContactosActivity.this, "Contacto eliminado", Toast.LENGTH_SHORT).show();
+                                        }
+                                    },
+                                    new Response.ErrorListener() {
+                                        @Override
+                                        public void onErrorResponse(VolleyError error) {
+                                            Toast.makeText(ContactosActivity.this, "Error al eliminar el contacto", Toast.LENGTH_SHORT).show();
+                                        }
+                                    }
+                            );
+
+                            requestQueue.add(jsonObjectRequest);
                         }
                     })
                     .setNegativeButton("No", null)
@@ -163,12 +210,15 @@ public class ContactosActivity extends AppCompatActivity {
                     public void onResponse(JSONArray response) {
                         contactos.clear();
                         contactosOriginales.clear();
+                        idsContactos.clear(); // Limpiar la lista de IDs
                         for (int i = 0; i < response.length(); i++) {
                             try {
                                 JSONObject contacto = response.getJSONObject(i);
                                 String nombre = contacto.getString("nombre");
+                                int id = contacto.getInt("id");
                                 contactos.add(nombre);
                                 contactosOriginales.add(nombre);
+                                idsContactos.add(id);
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }

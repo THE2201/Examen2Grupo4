@@ -117,14 +117,10 @@ public class MainActivity extends AppCompatActivity {
 
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                 response -> {
-                    // Manejar la respuesta del servidor
                     Log.d("Response", response.toString());
-
-                    // Limpiar campos después de guardar
                     limpiarCampos();
                 },
                 error -> {
-                    // Manejar el error
                     Log.e("Error", error.toString());
                 }) {
             @Override
@@ -135,7 +131,6 @@ public class MainActivity extends AppCompatActivity {
             }
         };
 
-        // Añadir la solicitud a la cola
         RequestQueue requestQueue = Volley.newRequestQueue(this);
         requestQueue.add(jsonObjectRequest);
     }
@@ -156,7 +151,6 @@ public class MainActivity extends AppCompatActivity {
         Log.d("Base64Audio", encodedString); // Imprimir en Logcat
         return encodedString;
     }
-
 
     private void limpiarCampos() {
         nombre.setText("");
