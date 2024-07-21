@@ -7,7 +7,6 @@ import android.view.View;
 import android.widget.AdapterView;
 import android.widget.ArrayAdapter;
 import android.widget.Button;
-import android.widget.EditText;
 import android.widget.ListView;
 import androidx.appcompat.widget.SearchView;
 import android.widget.Toast;
@@ -15,9 +14,6 @@ import android.widget.Toast;
 import androidx.activity.EdgeToEdge;
 import androidx.appcompat.app.AlertDialog;
 import androidx.appcompat.app.AppCompatActivity;
-import androidx.core.graphics.Insets;
-import androidx.core.view.ViewCompat;
-import androidx.core.view.WindowInsetsCompat;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
@@ -25,7 +21,6 @@ import com.android.volley.Response;
 import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonArrayRequest;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 
 import org.json.JSONArray;
@@ -47,6 +42,8 @@ public class ContactosActivity extends AppCompatActivity {
     private ArrayList<String> contactos;
     private ArrayList<String> contactosOriginales;
     private ArrayList<Integer> idsContactos;
+    private Map<Integer, Double> latitudes = new HashMap<>();
+    private Map<Integer, Double> longitudes = new HashMap<>();
     private String contactoSeleccionado;
     private int idSeleccionado;
     private RequestQueue requestQueue;
@@ -130,6 +127,12 @@ public class ContactosActivity extends AppCompatActivity {
                     @Override
                     public void onClick(DialogInterface dialog, int which) {
                         Toast.makeText(ContactosActivity.this, "Ir a la ubicacion de " + contactoSeleccionado, Toast.LENGTH_SHORT).show();
+                        Intent intent = new Intent(ContactosActivity.this, Mapa.class);
+                        double latitud = latitudes.getOrDefault(idSeleccionado, 0.0);
+                        double longitud = longitudes.getOrDefault(idSeleccionado, 0.0);
+                        intent.putExtra("LATITUD", latitud);
+                        intent.putExtra("LONGITUD", longitud);
+                        startActivity(intent);
                     }
                 })
                 .setNegativeButton("No", null)
@@ -163,6 +166,8 @@ public class ContactosActivity extends AppCompatActivity {
                                             contactos.remove(contactoSeleccionado);
                                             contactosOriginales.remove(contactoSeleccionado);
                                             idsContactos.remove((Integer) idSeleccionado);
+                                            latitudes.remove(idSeleccionado);
+                                            longitudes.remove(idSeleccionado);
                                             adapter.notifyDataSetChanged();
                                             listViewContactos.clearChoices();
                                             listViewContactos.requestLayout();
@@ -202,7 +207,6 @@ public class ContactosActivity extends AppCompatActivity {
         }
     }
 
-
     private void fetchContactos() {
         String url = "http://34.125.8.146/getContactos.php";
 
@@ -216,14 +220,20 @@ public class ContactosActivity extends AppCompatActivity {
                         contactos.clear();
                         contactosOriginales.clear();
                         idsContactos.clear(); // Limpiar la lista de IDs
+                        latitudes.clear();
+                        longitudes.clear();
                         for (int i = 0; i < response.length(); i++) {
                             try {
                                 JSONObject contacto = response.getJSONObject(i);
                                 String nombre = contacto.getString("nombre");
                                 int id = contacto.getInt("id");
+                                double latitud = contacto.getDouble("latitud");
+                                double longitud = contacto.getDouble("longitud");
                                 contactos.add(nombre);
                                 contactosOriginales.add(nombre);
                                 idsContactos.add(id);
+                                latitudes.put(id, latitud);
+                                longitudes.put(id, longitud);
                             } catch (JSONException e) {
                                 e.printStackTrace();
                             }
@@ -250,5 +260,4 @@ public class ContactosActivity extends AppCompatActivity {
         contactos.addAll(filteredList);
         adapter.notifyDataSetChanged();
     }
-
 }
