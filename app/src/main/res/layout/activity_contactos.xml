@@ -13,10 +13,11 @@
         android:layout_height="wrap_content"
         android:layout_margin="16dp"
         android:backgroundTint="@color/purple_700"
-        android:textColor="@color/white"
         android:text="Atras"
-        app:layout_constraintTop_toTopOf="parent"
-        app:layout_constraintStart_toStartOf="parent" />
+        android:textColor="@color/white"
+        app:icon="@mipmap/atras"
+        app:layout_constraintStart_toStartOf="parent"
+        app:layout_constraintTop_toTopOf="parent" />
 
     <androidx.appcompat.widget.SearchView
         android:id="@+id/searchView"
@@ -57,9 +58,11 @@
             android:layout_height="wrap_content"
             android:layout_marginEnd="8dp"
             android:layout_weight="1"
-            android:textColor="@color/white"
             android:backgroundTint="@color/purple_200"
-            android:text="Eliminar contacto" />
+            android:fontFamily="sans-serif-black"
+            android:text="Eliminar contacto"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
 
         <Button
             android:id="@+id/actualizarc"
@@ -67,9 +70,11 @@
             android:layout_height="wrap_content"
             android:layout_marginStart="8dp"
             android:layout_weight="1"
-            android:textColor="@color/white"
             android:backgroundTint="@color/purple_200"
-            android:text="Actualizar contacto" />
+            android:fontFamily="sans-serif-black"
+            android:text="Actualizar contacto"
+            android:textColor="@color/white"
+            android:textSize="14sp" />
     </LinearLayout>
 
 </androidx.constraintlayout.widget.ConstraintLayout>
