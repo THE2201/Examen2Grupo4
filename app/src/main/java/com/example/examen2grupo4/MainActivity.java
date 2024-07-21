@@ -2,14 +2,15 @@ package com.example.examen2grupo4;
 
 import android.content.Intent;
 import android.content.pm.PackageManager;
+import android.location.Location;
 import android.media.MediaPlayer;
 import android.os.Bundle;
 import android.Manifest;
 import androidx.activity.EdgeToEdge;
+import androidx.annotation.NonNull;
 import androidx.appcompat.app.AppCompatActivity;
 import androidx.core.app.ActivityCompat;
 import android.media.MediaRecorder;
-import android.os.Environment;
 import android.util.Base64;
 import android.util.Log;
 import android.view.View;
@@ -19,12 +20,12 @@ import android.widget.Toast;
 
 import com.android.volley.Request;
 import com.android.volley.RequestQueue;
-import com.android.volley.Response;
-import com.android.volley.VolleyError;
 import com.android.volley.toolbox.JsonObjectRequest;
-import com.android.volley.toolbox.StringRequest;
 import com.android.volley.toolbox.Volley;
 import com.example.examen2grupo4.Models.Contacto;
+import com.google.android.gms.location.FusedLocationProviderClient;
+import com.google.android.gms.location.LocationServices;
+import com.google.android.gms.tasks.OnSuccessListener;
 
 import org.json.JSONException;
 import org.json.JSONObject;
@@ -33,27 +34,22 @@ import java.io.File;
 import java.io.FileInputStream;
 import java.io.IOException;
 import java.io.InputStream;
-import java.nio.file.Files;
-import java.nio.file.Paths;
 import java.util.HashMap;
 import java.util.Map;
 
 public class MainActivity extends AppCompatActivity {
 
-    //Concerniente a permisos de microfono
     private static final int REQUEST_RECORD_AUDIO_PERMISSION = 200;
     private boolean permissionToRecordAccepted = false;
-    private String [] permissions = {Manifest.permission.RECORD_AUDIO};
+    private String[] permissions = {Manifest.permission.RECORD_AUDIO, Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION};
 
-    //Impresion en consola al fallar
     private final String TAG = "Error";
 
-    //Archivo e instancia para grabar
     private MediaRecorder recorder = null;
     private MediaPlayer player = null;
     private String fileName = null;
 
-    //booleano para definir y cambiar texto de: Capturar audio. -> Detener grabacion
+    private static final int LOCATION_PERMISSION_REQUEST_CODE = 1;
     boolean estaGrabando = false;
 
     Button detenerAudio;
@@ -66,6 +62,8 @@ public class MainActivity extends AppCompatActivity {
     EditText latitud;
     EditText longitud;
 
+    private FusedLocationProviderClient fusedLocationClient;
+
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
@@ -74,31 +72,79 @@ public class MainActivity extends AppCompatActivity {
 
         ActivityCompat.requestPermissions(this, permissions, REQUEST_RECORD_AUDIO_PERMISSION);
 
-        nombre = (EditText) findViewById(R.id.nombre);
-        telefono = (EditText) findViewById(R.id.telefono);
-        latitud = (EditText) findViewById(R.id.latitud);
-        longitud = (EditText) findViewById(R.id.longitud);
+        nombre = findViewById(R.id.nombre);
+        telefono = findViewById(R.id.telefono);
+        latitud = findViewById(R.id.latitud);
+        longitud = findViewById(R.id.longitud);
 
-        capturarAudio = (Button) findViewById(R.id.bt_capturar_audio);
+        capturarAudio = findViewById(R.id.bt_capturar_audio);
         reproducirAudio = findViewById(R.id.bt_reproducir_audio);
-        salvar = (Button) findViewById(R.id.bt_salvar);
-        contactos = (Button) findViewById(R.id.bt_contactos);
-        detenerAudio = (Button) findViewById(R.id.bt_detener_audio);
+        salvar = findViewById(R.id.bt_salvar);
+        contactos = findViewById(R.id.bt_contactos);
+        detenerAudio = findViewById(R.id.bt_detener_audio);
 
         fileName = getExternalCacheDir().getAbsolutePath();
         fileName += "/grabacion.3gp";
 
+        fusedLocationClient = LocationServices.getFusedLocationProviderClient(this);
 
         capturarAudio.setOnClickListener(v -> startRecording());
         detenerAudio.setOnClickListener(v -> stopRecording());
         reproducirAudio.setOnClickListener(v -> startPlaying());
-        contactos.setOnClickListener(new View.OnClickListener() {
-            @Override
-            public void onClick(View v) {
-                startActivity(new Intent(MainActivity.this, ContactosActivity.class));
-            }
-        });
+        contactos.setOnClickListener(v -> startActivity(new Intent(MainActivity.this, ContactosActivity.class)));
         salvar.setOnClickListener(v -> guardarContacto());
+    }
+
+    @Override
+    public void onRequestPermissionsResult(int requestCode, @NonNull String[] permissions, @NonNull int[] grantResults) {
+        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
+        if (requestCode == REQUEST_RECORD_AUDIO_PERMISSION) {
+            permissionToRecordAccepted = grantResults[0] == PackageManager.PERMISSION_GRANTED;
+            if (!permissionToRecordAccepted) finish();
+        } else if (requestCode == LOCATION_PERMISSION_REQUEST_CODE) {
+            if (grantResults.length > 0 && grantResults[0] == PackageManager.PERMISSION_GRANTED) {
+                getCurrentLocation();
+            } else {
+                Toast.makeText(this, "Permiso de ubicación denegado", Toast.LENGTH_SHORT).show();
+            }
+        }
+    }
+
+    @Override
+    protected void onResume() {
+        super.onResume();
+        requestLocationPermission();
+    }
+
+    private void requestLocationPermission() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) != PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) != PackageManager.PERMISSION_GRANTED) {
+
+            ActivityCompat.requestPermissions(this, new String[]{Manifest.permission.ACCESS_FINE_LOCATION, Manifest.permission.ACCESS_COARSE_LOCATION}, LOCATION_PERMISSION_REQUEST_CODE);
+        } else {
+            getCurrentLocation();
+        }
+    }
+
+    private void getCurrentLocation() {
+        if (ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_FINE_LOCATION) == PackageManager.PERMISSION_GRANTED &&
+                ActivityCompat.checkSelfPermission(this, Manifest.permission.ACCESS_COARSE_LOCATION) == PackageManager.PERMISSION_GRANTED) {
+
+            fusedLocationClient.getLastLocation()
+                    .addOnSuccessListener(this, new OnSuccessListener<Location>() {
+                        @Override
+                        public void onSuccess(Location location) {
+                            if (location != null) {
+                                double lat = location.getLatitude();
+                                double lon = location.getLongitude();
+                                latitud.setText(String.valueOf(lat));
+                                longitud.setText(String.valueOf(lon));
+                            } else {
+                                Toast.makeText(MainActivity.this, "No se pudo obtener la ubicación", Toast.LENGTH_SHORT).show();
+                            }
+                        }
+                    });
+        }
     }
 
     private void guardarContacto() {
@@ -118,11 +164,9 @@ public class MainActivity extends AppCompatActivity {
         JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(Request.Method.POST, url, jsonBody,
                 response -> {
                     Log.d("Response", response.toString());
-                    limpiarCampos();
+                    startActivity(new Intent(MainActivity.this, ContactosActivity.class));
                 },
-                error -> {
-                    Log.e("Error", error.toString());
-                }) {
+                error -> Log.e("Error", error.toString())) {
             @Override
             public Map<String, String> getHeaders() {
                 Map<String, String> headers = new HashMap<>();
@@ -148,7 +192,7 @@ public class MainActivity extends AppCompatActivity {
             return null;
         }
         String encodedString = Base64.encodeToString(audioBytes, Base64.DEFAULT);
-        Log.d("Base64Audio", encodedString); // Imprimir en Logcat
+        Log.d("Base64Audio", encodedString);
         return encodedString;
     }
 
@@ -159,7 +203,6 @@ public class MainActivity extends AppCompatActivity {
         longitud.setText("");
     }
 
-    //funcion para comenzar grabacion
     private void startRecording() {
         recorder = new MediaRecorder();
         recorder.setAudioSource(MediaRecorder.AudioSource.MIC);
@@ -178,7 +221,6 @@ public class MainActivity extends AppCompatActivity {
         recorder.start();
     }
 
-    //funcion para detener grabacion
     private void stopRecording() {
         recorder.stop();
         recorder.release();
@@ -187,7 +229,6 @@ public class MainActivity extends AppCompatActivity {
         detenerAudio.setVisibility(View.INVISIBLE);
     }
 
-    //Funcion al salir de app detenga grabacion
     @Override
     public void onStop() {
         super.onStop();
@@ -211,17 +252,4 @@ public class MainActivity extends AppCompatActivity {
             Log.i(TAG, "startPlaying: " + e.toString());
         }
     }
-
-    @Override
-    public void onRequestPermissionsResult(int requestCode, String[] permissions, int[] grantResults) {
-        super.onRequestPermissionsResult(requestCode, permissions, grantResults);
-        switch (requestCode) {
-            case REQUEST_RECORD_AUDIO_PERMISSION:
-                permissionToRecordAccepted  = grantResults[0] == PackageManager.PERMISSION_GRANTED;
-                break;
-        }
-        if (!permissionToRecordAccepted ) finish();
-    }
-
-
 }
