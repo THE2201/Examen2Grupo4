@@ -1,6 +1,7 @@
 package com.example.examen2grupo4;
 
 import android.content.DialogInterface;
+import android.content.Intent;
 import android.os.Bundle;
 import android.view.View;
 import android.widget.AdapterView;
@@ -153,7 +154,7 @@ public class ContactosActivity extends AppCompatActivity {
                             }
 
                             JsonObjectRequest jsonObjectRequest = new JsonObjectRequest(
-                                    Request.Method.POST,
+                                    Request.Method.DELETE,
                                     url,
                                     postData,
                                     new Response.Listener<JSONObject>() {
@@ -192,11 +193,15 @@ public class ContactosActivity extends AppCompatActivity {
 
     private void actualizarContacto() {
         if (contactoSeleccionado != null) {
-            Toast.makeText(this, "Actualizar el contacto: " + contactoSeleccionado, Toast.LENGTH_SHORT).show();
+            Intent intent = new Intent(ContactosActivity.this, ActualizarContacto.class);
+            intent.putExtra("contacto_id", idSeleccionado);
+            intent.putExtra("contacto_nombre", contactoSeleccionado);
+            startActivity(intent);
         } else {
             Toast.makeText(this, "Seleccione un contacto para actualizar", Toast.LENGTH_SHORT).show();
         }
     }
+
 
     private void fetchContactos() {
         String url = "http://34.125.8.146/getContactos.php";
